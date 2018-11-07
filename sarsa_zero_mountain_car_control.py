@@ -8,7 +8,7 @@ import time
 # Environment
 from Experiment_Engine import MountainCar
 # Function Approximator
-from Experiment_Engine import ExperienceReplayBuffer, NeuralNetworkFunctionApproximator, FullyConnectedModel
+from Experiment_Engine import ExperienceReplayBuffer, NeuralNetworkFunctionApproximator, ActionValueFullyConnectedModel
 # Renforcement Learning Agent
 from Experiment_Engine import SarsaZeroAgent, SarsaZeroReturnFunction, EpsilonGreedyPolicy
 # Parameters
@@ -72,8 +72,8 @@ class ExperimentAgent():
         self.env = MountainCar(config=self.config, summary=self.summary)
 
         " Models "
-        self.tnetwork = FullyConnectedModel(config=self.config, name='target')          # Target Network
-        self.unetwork = FullyConnectedModel(config=self.config, name='update')          # Update Network
+        self.tnetwork = ActionValueFullyConnectedModel(config=self.config, name='target')          # Target Network
+        self.unetwork = ActionValueFullyConnectedModel(config=self.config, name='update')          # Update Network
 
         """ Policies """
         self.target_policy = EpsilonGreedyPolicy(config=self.config)

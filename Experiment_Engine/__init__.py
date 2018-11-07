@@ -4,6 +4,6 @@ from .epsilon_greedy_policy import EpsilonGreedyPolicy
 from .sarsa_experience_replay_buffer import ExperienceReplayBuffer
 from .mountain_car import MountainCar
 from .neural_network_function_approximator import NeuralNetworkFunctionApproximator
-from .nn_model import FullyConnectedModel
+from .nn_model import ActionValueFullyConnectedModel
 from .sarsa_zero_agent import SarsaZeroReturnFunction, SarsaZeroAgent
 from .util import check_attribute_else_default, check_dict_else_default
