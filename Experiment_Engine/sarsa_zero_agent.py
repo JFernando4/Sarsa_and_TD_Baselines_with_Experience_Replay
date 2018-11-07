@@ -1,4 +1,4 @@
-from numpy import inf, zeros
+from numpy import inf
 import numpy as np
 
 from Experiment_Engine.util import check_attribute_else_default, check_dict_else_default
