@@ -142,7 +142,6 @@ class StateValueFullyConnectedModel:
         """
         self.dim_out = check_attribute_else_default(config, 'dim_out', [10,10,10])
         self.obs_dims = check_attribute_else_default(config, 'obs_dims', [2])
-        self.num_actions = check_attribute_else_default(config, 'num_actions', 3)
         self.gate_fun = check_attribute_else_default(config, 'gate_fun', tf.nn.relu)
         self.full_layers = check_attribute_else_default(config, 'full_layers', 3)
         self.xavier_init = check_attribute_else_default(config, 'xavier_init', True)
@@ -178,7 +177,7 @@ class StateValueFullyConnectedModel:
         """ Output layer """
         # output layer: fully connected
         W, b, z_hat, self.y_hat = fully_connected(
-            self.name, "output_layer", current_y_hat, self.dim_out[-1], self.num_actions,
+            self.name, "output_layer", current_y_hat, self.dim_out[-1], 1,
             tf.random_normal_initializer(stddev=1.0 / np.sqrt(self.dim_out[-1]), seed=SEED), linear_transfer,
             xavier_init=self.xavier_init)
         tf.add_to_collection(self.name, W)
@@ -187,7 +186,7 @@ class StateValueFullyConnectedModel:
         self.train_vars = [self.train_vars]
 
         # Obtaining y_hat and Scaling by the Importance Sampling
-        y_hat = tf.gather_nd(self.y_hat, self.x_actions)
+        y_hat = self.y_hat
         y = self.y
         # Temporal Difference Error
         self.td_error = tf.subtract(y, y_hat)
