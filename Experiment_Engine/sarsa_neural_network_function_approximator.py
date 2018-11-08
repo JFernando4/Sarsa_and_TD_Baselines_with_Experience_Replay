@@ -45,7 +45,12 @@ class NeuralNetworkFunctionApproximator:
 
         " Neural Network Models "
         self.target_network = target_network    # Target Network
-        self.update_network = update_network    # Update Network
+        if self.tnetwork_update_freq == 1:
+            self.update_network = self.target_network
+        elif self.tnetwork_update_freq > 1:
+            self.update_network = update_network
+        else:
+            raise ValueError("The target network update frquency has to be greater than or equal to one.")
 
         " Training and Learning Evaluation: Tensorflow and variables initializer "
         self.optimizer = optimizer(self.alpha)
@@ -55,17 +60,18 @@ class NeuralNetworkFunctionApproximator:
         self.train_step = self.optimizer.minimize(self.update_network.train_loss,
                                                   var_list=self.update_network.train_vars[0])
 
-        " Copy Weights to Target Network Operator "
-        unetwork_vars = tf.get_collection(self.update_network.name)
-        tnetwork_vars = tf.get_collection(self.target_network.name)
-        copy_ops = [target_var.assign(update_var) for target_var, update_var in zip(tnetwork_vars, unetwork_vars)]
-        self.copy_to_target = tf.group(*copy_ops)
-
         " Initializing variables in the graph"
         for var in tf.global_variables():
             self.sess.run(var.initializer)
-        self.sess.run(self.copy_to_target)
-        # self.update_target_network()
+
+        if self.tnetwork_update_freq > 1:
+            " Copy Weights to Target Network Operator "
+            unetwork_vars = tf.get_collection(self.update_network.name)
+            tnetwork_vars = tf.get_collection(self.target_network.name)
+            copy_ops = [target_var.assign(update_var) for target_var, update_var in zip(tnetwork_vars, unetwork_vars)]
+            self.copy_to_target = tf.group(*copy_ops)
+            self.sess.run(self.copy_to_target)
+            # self.update_target_network()
 
     def update(self):
         if self.er_buffer.ready_to_sample():
@@ -82,8 +88,9 @@ class NeuralNetworkFunctionApproximator:
             self.config.update_count += 1
             if self.config.update_count >= self.tnetwork_update_freq:
                 self.config.update_count = 0
-                self.sess.run(self.copy_to_target)
                 self.er_buffer.out_of_date()
+                if self.tnetwork_update_freq > 1:
+                    self.sess.run(self.copy_to_target)
 
     # def update_target_network(self):
         # update_network_vars = self.update_network.get_variables_as_tensor()
