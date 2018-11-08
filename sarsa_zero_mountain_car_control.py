@@ -26,6 +26,7 @@ class ExperimentAgent():
         self.hidden_units = experiment_parameters.hidden_units
         self.xavier_init = experiment_parameters.xavier_initialization
         self.max_steps = experiment_parameters.max_steps
+        self.replay_start = experiment_parameters.replay_start
 
         self.tf_sess = tf.Session()
 
@@ -64,7 +65,7 @@ class ExperimentAgent():
 
         """ RL Agent Parameters """
         self.config.gamma = 1
-        self.config.er_start_size = 1000
+        self.config.er_start_size = self.replay_start
         self.config.er_init_steps_count = 0
         self.config.fixed_tpolicy = False
 
@@ -197,6 +198,7 @@ if __name__ == "__main__":
     parser.add_argument('-hidden_units', action='store', default=800, type=np.int64)
     parser.add_argument('-xavier_initialization', action='store_true', default=False)
     parser.add_argument('-max_steps', action='store', default=1000, type=np.int32)
+    parser.add_argument('-replay_start', action='store', default=1000, type=np.int32)
     args = parser.parse_args()
 
     """ Directories """
