@@ -8,9 +8,10 @@ import time
 # Environment
 from Experiment_Engine import MountainCar
 # Function Approximator
-from Experiment_Engine import ExperienceReplayBuffer, NeuralNetworkFunctionApproximator, ActionValueFullyConnectedModel
+from Experiment_Engine import TDExperienceReplayBuffer, TDNeuralNetworkFunctionApproximator, \
+    StateValueFullyConnectedModel
 # Renforcement Learning Agent
-from Experiment_Engine import TD, SarsaZeroReturnFunction, EpsilonGreedyPolicy
+from Experiment_Engine import TDZeroAgent, TDZeroReturnFunction
 # Parameters
 from Experiment_Engine import Config
 
@@ -29,14 +30,13 @@ class ExperimentAgent():
 
         self.tf_sess = tf.Session()
 
-        """ Experiment COnfiguration """
+        """ Experiment Configuration """
         self.config = Config()
         self.summary = {}
         self.config.save_summary = True
 
         """ Environment Parameters """
         self.config.max_actions = self.max_steps
-        self.config.num_actions = 3             # Number of actions in Mountain Car
         self.config.obs_dims = [2]              # Dimensions of the observations as experienced by the agent
                                                 # (This could be a transformation of the raw state)
 
@@ -72,31 +72,28 @@ class ExperimentAgent():
         self.env = MountainCar(config=self.config, summary=self.summary)
 
         " Models "
-        self.tnetwork = ActionValueFullyConnectedModel(config=self.config, name='target')          # Target Network
-        self.unetwork = ActionValueFullyConnectedModel(config=self.config, name='update')          # Update Network
-
-        """ Policies """
-        self.target_policy = EpsilonGreedyPolicy(config=self.config)
+        self.tnetwork = StateValueFullyConnectedModel(config=self.config, name='target')          # Target Network
+        self.unetwork = StateValueFullyConnectedModel(config=self.config, name='update')          # Update Network
 
         """ Sarsa Zero Return Function """
-        self.rl_return_fun = SarsaZeroReturnFunction(tpolicy=self.target_policy, config=self.config)
+        self.rl_return_fun = TDZeroReturnFunction(config=self.config)
 
         """ Experience Replay Buffer"""
-        self.er_buffer = ExperienceReplayBuffer(config=self.config, return_function=self.rl_return_fun)
+        self.er_buffer = TDExperienceReplayBuffer(config=self.config, return_function=self.rl_return_fun)
 
         """ Neural Network """
-        self.function_approximator = NeuralNetworkFunctionApproximator(optimizer=self.optimizer,
-                                                                       target_network=self.tnetwork,
-                                                                       update_network=self.unetwork,
-                                                                       er_buffer=self.er_buffer,
-                                                                       config=self.config,
-                                                                       tf_session=self.tf_sess,
-                                                                       summary=self.summary)
+        self.function_approximator = TDNeuralNetworkFunctionApproximator(optimizer=self.optimizer,
+                                                                         target_network=self.tnetwork,
+                                                                         update_network=self.unetwork,
+                                                                         er_buffer=self.er_buffer,
+                                                                         config=self.config,
+                                                                         tf_session=self.tf_sess,
+                                                                         summary=self.summary)
 
         """ RL Agent """
-        self.agent = SarsaZeroAgent(environment=self.env, function_approximator=self.function_approximator,
-                                    behaviour_policy=self.target_policy, er_buffer=self.er_buffer, config=self.config,
-                                    summary=self.summary)
+        self.agent = TDZeroAgent(environment=self.env, function_approximator=self.function_approximator,
+                                 er_buffer=self.er_buffer, config=self.config,
+                                 summary=self.summary)
 
         # number_of_parameters = 0
         # for variable in self.tnetwork.get_variables_as_list(self.tf_sess):
