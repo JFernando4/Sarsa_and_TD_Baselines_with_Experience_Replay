@@ -5,7 +5,7 @@ from Experiment_Engine.config import Config
 from Experiment_Engine.util import check_attribute_else_default, check_dict_else_default
 
 " Neural Network function approximator "
-class NeuralNetworkFunctionApproximator:
+class TDNeuralNetworkFunctionApproximator:
 
     def __init__(self, optimizer, target_network, update_network, er_buffer, config=None, tf_session=None,
                  summary=None):

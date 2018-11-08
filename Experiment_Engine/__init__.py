@@ -4,6 +4,9 @@ from .epsilon_greedy_policy import EpsilonGreedyPolicy
 from .sarsa_experience_replay_buffer import ExperienceReplayBuffer
 from .mountain_car import MountainCar
 from .sarsa_neural_network_function_approximator import NeuralNetworkFunctionApproximator
-from .nn_model import ActionValueFullyConnectedModel
+from .nn_model import ActionValueFullyConnectedModel, StateValueFullyConnectedModel
 from .sarsa_zero_agent import SarsaZeroReturnFunction, SarsaZeroAgent
 from .util import check_attribute_else_default, check_dict_else_default
+from .td_zero_agent_with_fixed_policy import TDZeroAgent, TDZeroReturnFunction
+from .td_experience_replay_buffer import TDExperienceReplayBuffer
+from .td_neural_network_function_approximator import TDNeuralNetworkFunctionApproximator

@@ -6,7 +6,7 @@ from Experiment_Engine.util import check_attribute_else_default
 from Experiment_Engine.config import Config
 
 
-class ExperienceReplayBuffer:
+class TDExperienceReplayBuffer:
 
     def __init__(self, config, return_function):
 
