@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pickle
 import argparse
+import parser
 import time
 
 # Environment
@@ -15,7 +16,7 @@ from Experiment_Engine import TDZeroAgent, TDZeroReturnFunction
 # Parameters
 from Experiment_Engine import Config
 
-MAX_EPISODES = 500
+MAX_EPISODES = 2000
 
 
 class ExperimentAgent():
@@ -27,6 +28,7 @@ class ExperimentAgent():
         self.hidden_units = experiment_parameters.hidden_units
         self.xavier_init = experiment_parameters.xavier_initialization
         self.max_steps = experiment_parameters.max_steps
+        self.replay_start = experiment_parameters.replay_start
 
         self.tf_sess = tf.Session()
 
@@ -53,20 +55,15 @@ class ExperimentAgent():
                                                               centered=True)
 
         """     Experience Replay Buffer Parameters     """
-        self.config.batch_sz = 32
+        self.config.batch_sz = 10
         self.config.buff_sz = 20000
         self.config.env_state_dims = [2]        # Dimensions of the raw environment's states
         self.config.obs_dtype = np.float32      # Data type of the raw environment's states
 
-        """ Policy Parameters """
-        self.config.epsilon = 0.1
-        self.config.onpolicy = True
-
         """ RL Agent Parameters """
         self.config.gamma = 1
-        self.config.er_start_size = 1000
+        self.config.er_start_size = self.replay_start
         self.config.er_init_steps_count = 0
-        self.config.fixed_tpolicy = False
 
         " Environment "
         self.env = MountainCar(config=self.config, summary=self.summary)
@@ -95,16 +92,22 @@ class ExperimentAgent():
                                  er_buffer=self.er_buffer, config=self.config,
                                  summary=self.summary)
 
-        # number_of_parameters = 0
-        # for variable in self.tnetwork.get_variables_as_list(self.tf_sess):
-        #     number_of_parameters += np.array(variable).flatten().size
-        # print("The number of parameters in the network is:", number_of_parameters)  # Answer: 6003
-
-    def train(self):
+    def train(self, database):
         self.agent.train(num_episodes=1)
         self.function_approximator.store_summary()
         self.env.store_summary()
         self.agent.store_summary()
+        self.evaluate_model(database)
+
+    def evaluate_model(self, database):
+        states = database[:, np.arange(2)]      # The first two columns correspond to the position and velocity
+        estimated_value_functions = np.squeeze(self.function_approximator.get_state_values_for_evaluation(states))
+        true_value_functions = database[:, 2]
+        estimation_error = estimated_value_functions - true_value_functions
+        squared_error = estimation_error * estimation_error
+
+        mean_squared_error = np.sum(squared_error) / squared_error.size
+        print("The root mean squared value error is:", np.sqrt(mean_squared_error))
 
     def get_number_of_steps(self):
         return np.sum(self.summary['steps_per_episode'])
@@ -131,11 +134,6 @@ class ExperimentAgent():
         params_txt = open(txt_file_pathname, "w")
         params_txt.write("# Agent: Sarsa Zero #\n")
         params_txt.write("\tgamma = " + str(self.rl_return_fun.gamma) + "\n")
-        params_txt.write("\ton policy = " + str(self.rl_return_fun.onpolicy) + "\n")
-        params_txt.write("\n")
-
-        params_txt.write("# Target Policy #\n")
-        params_txt.write("\tepsilon = " + str(self.target_policy.epsilon) + "\n")
         params_txt.write("\n")
 
         params_txt.write("# Function Approximator: Neural Network with Experience Replay #\n")
@@ -154,11 +152,12 @@ class ExperimentAgent():
 
 
 class Experiment:
-    def __init__(self, experiment_parameters, results_dir=None, max_number_of_episodes=500):
+    def __init__(self, experiment_parameters, database_path, results_dir=None, max_number_of_episodes=500):
         self.agent = ExperimentAgent(experiment_parameters=experiment_parameters)
         self.results_dir = results_dir
         self.max_number_of_episodes = max_number_of_episodes
         self.agent.save_parameters(self.results_dir)
+        self.database = np.load(database_path)
 
         if max_number_of_episodes > MAX_EPISODES:
             raise ValueError
@@ -167,7 +166,7 @@ class Experiment:
         while self.agent.get_episode_number() < self.max_number_of_episodes:
             if verbose:
                 print("\nTraining episode", str(len(self.agent.get_train_data()[0]) + 1) + "...")
-            self.agent.train()
+            self.agent.train(self.database)
             if verbose:
                 return_per_episode, nn_loss = self.agent.get_train_data()
                 if len(return_per_episode) < 50:
@@ -184,21 +183,26 @@ class Experiment:
 
 if __name__ == "__main__":
     """ Experiment Parameters """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-quiet', action='store_false', default=True)
-    parser.add_argument('-name', action='store', default='agent_1', type=str)
-    parser.add_argument('-episodes', action='store', default=MAX_EPISODES - 1, type=np.int32)
-    parser.add_argument('-tnetwork_update_freq', action='store', default=1000, type=np.int32)
-    parser.add_argument('-alpha', action='store', default=0.00025, type=np.float64)
-    parser.add_argument('-onpolicy', action='store_true', default=False)
-    parser.add_argument('-hidden_units', action='store', default=800, type=np.int64)
-    parser.add_argument('-xavier_initialization', action='store_true', default=False)
-    parser.add_argument('-max_steps', action='store', default=1000, type=np.int32)
-    args = parser.parse_args()
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument('-quiet', action='store_false', default=True)
+    argument_parser.add_argument('-name', action='store', default='agent_1', type=str)
+    argument_parser.add_argument('-episodes', action='store', default=MAX_EPISODES, type=np.int32)
+    argument_parser.add_argument('-tnetwork_update_freq', action='store', default=1000, type=np.int32)
+    argument_parser.add_argument('-alpha', action='store', default="0.00025", type=str)
+    argument_parser.add_argument('-hidden_units', action='store', default=135, type=np.int64)
+    argument_parser.add_argument('-xavier_initialization', action='store_true', default=False)
+    argument_parser.add_argument('-max_steps', action='store', default=1000, type=np.int32)
+    argument_parser.add_argument('-replay_start', action='store', default=1000, type=np.int32)
+    args = argument_parser.parse_args()
+
+    alpha_code = parser.expr(args.alpha).compile()
+    args.alpha = eval(args.alpha)
 
     """ Directories """
     working_directory = os.getcwd()
-    results_directory = os.path.join(working_directory, "Results", "Mountain_Car_Control")
+    database_path = os.path.join(working_directory, 'Experiment_Engine', 'sampleOnPolicy.npy')
+    assert os.path.isfile(database_path)
+    results_directory = os.path.join(working_directory, "Results", "Mountain_Car_Prediction")
     if not os.path.exists(results_directory):
         os.makedirs(results_directory)
     run_results_directory = os.path.join(results_directory, args.name)
@@ -206,8 +210,8 @@ if __name__ == "__main__":
         os.makedirs(run_results_directory)
 
     exp_params = args
-    experiment = Experiment(results_dir=run_results_directory, max_number_of_episodes=args.episodes,
-                            experiment_parameters=exp_params)
+    experiment = Experiment(results_dir=run_results_directory, database_path=database_path,
+                            max_number_of_episodes=args.episodes, experiment_parameters=exp_params)
     start_time = time.time()
     experiment.run_experiment(verbose=args.quiet)
     end_time = time.time()
