@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pickle
 import argparse
+import parser
 import time
 
 # Environment
@@ -188,18 +189,21 @@ class Experiment:
 
 if __name__ == "__main__":
     """ Experiment Parameters """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-quiet', action='store_false', default=True)
-    parser.add_argument('-name', action='store', default='agent_1', type=str)
-    parser.add_argument('-episodes', action='store', default=MAX_EPISODES - 1, type=np.int32)
-    parser.add_argument('-tnetwork_update_freq', action='store', default=1000, type=np.int32)
-    parser.add_argument('-alpha', action='store', default=0.00025, type=np.float64)
-    parser.add_argument('-onpolicy', action='store_true', default=False)
-    parser.add_argument('-hidden_units', action='store', default=800, type=np.int64)
-    parser.add_argument('-xavier_initialization', action='store_true', default=False)
-    parser.add_argument('-max_steps', action='store', default=1000, type=np.int32)
-    parser.add_argument('-replay_start', action='store', default=1000, type=np.int32)
-    args = parser.parse_args()
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument('-quiet', action='store_false', default=True)
+    argument_parser.add_argument('-name', action='store', default='agent_1', type=str)
+    argument_parser.add_argument('-episodes', action='store', default=MAX_EPISODES - 1, type=np.int32)
+    argument_parser.add_argument('-tnetwork_update_freq', action='store', default=1000, type=np.int32)
+    argument_parser.add_argument('-alpha', action='store', default="0.00025", type=str)
+    argument_parser.add_argument('-onpolicy', action='store_true', default=False)
+    argument_parser.add_argument('-hidden_units', action='store', default=800, type=np.int64)
+    argument_parser.add_argument('-xavier_initialization', action='store_true', default=False)
+    argument_parser.add_argument('-max_steps', action='store', default=1000, type=np.int32)
+    argument_parser.add_argument('-replay_start', action='store', default=1000, type=np.int32)
+    args = argument_parser.parse_args()
+
+    alpha_code = parser.expr(args.alpha).compile()
+    args.alpha = eval(args.alpha)
 
     """ Directories """
     working_directory = os.getcwd()
