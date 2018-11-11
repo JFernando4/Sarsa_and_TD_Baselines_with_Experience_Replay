@@ -73,7 +73,7 @@ class ActionValueFullyConnectedModel:
         full_layers             int             3                   number of fully connected layers
         xavier_init             bool            True                whether to use a variant of xavier initialization
                                                                     otherwise, matrices are initialized according to
-                                                                    N(0, 0.5) and bias are initialized according to
+                                                                    N(0, 0.1) and bias are initialized according to
                                                                     N(0, 0.1) 
         """
         self.dim_out = check_attribute_else_default(config, 'dim_out', [10,10,10])
