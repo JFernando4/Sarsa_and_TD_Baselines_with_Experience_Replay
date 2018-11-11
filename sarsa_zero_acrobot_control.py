@@ -191,7 +191,7 @@ if __name__ == "__main__":
     argument_parser.add_argument('-tnetwork_update_freq', action='store', default=1000, type=np.int32)
     argument_parser.add_argument('-alpha', action='store', default="0.00025", type=str)
     argument_parser.add_argument('-onpolicy', action='store_true', default=False)
-    argument_parser.add_argument('-hidden_units', action='store', default=800, type=np.int64)
+    argument_parser.add_argument('-hidden_units', action='store', default=2000, type=np.int64)
     argument_parser.add_argument('-xavier_initialization', action='store_true', default=False)
     argument_parser.add_argument('-max_steps', action='store', default=1000, type=np.int32)
     argument_parser.add_argument('-replay_start', action='store', default=1000, type=np.int32)

@@ -12,5 +12,5 @@ do
     echo "Training Agent $i"
     python3 ./sarsa_zero_acrobot_control.py -episodes 500 \
     -name Target_Network_Results/Target_Network_Update_Freq1000/agent_$i \
-    -quiet -tnetwork_update_freq 1000 -alpha 0.00025 -onpolicy -hidden_units 800 -max_steps 500
+    -quiet -tnetwork_update_freq 1000 -alpha 0.00025 -onpolicy -hidden_units 2000 -max_steps 500
 done
