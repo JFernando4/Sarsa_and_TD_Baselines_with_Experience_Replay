@@ -3,6 +3,7 @@ from .config import Config
 from .epsilon_greedy_policy import EpsilonGreedyPolicy
 from .sarsa_experience_replay_buffer import ExperienceReplayBuffer
 from .mountain_car import MountainCar
+from .acrobot import Acrobot
 from .sarsa_neural_network_function_approximator import NeuralNetworkFunctionApproximator
 from .nn_model import ActionValueFullyConnectedModel, StateValueFullyConnectedModel
 from .sarsa_zero_agent import SarsaZeroReturnFunction, SarsaZeroAgent
