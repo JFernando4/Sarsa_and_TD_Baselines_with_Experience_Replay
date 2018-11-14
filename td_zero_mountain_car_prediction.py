@@ -51,11 +51,12 @@ class ExperimentAgent():
         self.config.alpha = self.alpha
         self.config.tnetwork_update_freq = self.tnetwork_update_freq
         self.config.update_count = 0
-        self.optimizer = lambda lr: tf.train.RMSPropOptimizer(learning_rate=lr, decay=0.95, epsilon=0.01, momentum=0.95,
-                                                              centered=True)
+        # self.optimizer = lambda lr: tf.train.RMSPropOptimizer(learning_rate=lr, decay=0.95, epsilon=0.01, momentum=0.95,
+        #                                                       centered=True)
+        self.optimizer = lambda lr: tf.train.GradientDescentOptimizer(learning_rate=lr)
 
         """     Experience Replay Buffer Parameters     """
-        self.config.batch_sz = 10
+        self.config.batch_sz = 32
         self.config.buff_sz = 20000
         self.config.env_state_dims = [2]        # Dimensions of the raw environment's states
         self.config.obs_dtype = np.float32      # Data type of the raw environment's states
