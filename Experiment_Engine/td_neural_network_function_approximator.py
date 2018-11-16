@@ -45,7 +45,7 @@ class TDNeuralNetworkFunctionApproximator:
 
         " Neural Network Models "
         self.target_network = target_network    # Target Network
-        self.update_network = update_network    # Update Network
+        self.update_network = update_network  # Update Network
 
         " Training and Learning Evaluation: Tensorflow and variables initializer "
         self.optimizer = optimizer(self.alpha)
@@ -53,19 +53,20 @@ class TDNeuralNetworkFunctionApproximator:
 
         " Train step "
         self.train_step = self.optimizer.minimize(self.update_network.train_loss,
-                                                  var_list=self.update_network.train_vars[0])
+                                                  var_list=tf.get_collection(self.update_network.name))
+
+        " Initializing variables in the graph"
+        for var in tf.global_variables():
+            self.sess.run(var.initializer)
 
         " Copy Weights to Target Network Operator "
         unetwork_vars = tf.get_collection(self.update_network.name)
         tnetwork_vars = tf.get_collection(self.target_network.name)
         copy_ops = [target_var.assign(update_var) for target_var, update_var in zip(tnetwork_vars, unetwork_vars)]
         self.copy_to_target = tf.group(*copy_ops)
-
-        " Initializing variables in the graph"
-        for var in tf.global_variables():
-            self.sess.run(var.initializer)
         self.sess.run(self.copy_to_target)
-        # self.update_target_network()
+
+        # self.state_value = tf.stop_gradient(self.target_network.y_hat)
 
     def update(self):
         if self.er_buffer.ready_to_sample():
@@ -74,29 +75,35 @@ class TDNeuralNetworkFunctionApproximator:
             feed_dictionary = {self.update_network.x_frames: sample_states,
                                self.update_network.y: sample_returns}
 
-            train_loss, _ = self.sess.run((self.update_network.train_loss, self.train_step), feed_dict=feed_dictionary)
+            tderror, train_loss, _ = self.sess.run((self.update_network.td_error,
+                                                    self.update_network.train_loss,
+                                                    self.train_step), feed_dict=feed_dictionary)
             self.training_steps += 1
             self.cumulative_loss += train_loss
             self.config.update_count += 1
             if self.config.update_count >= self.tnetwork_update_freq:
                 self.config.update_count = 0
-                self.sess.run(self.copy_to_target)
                 self.er_buffer.out_of_date()
-
-    # def update_target_network(self):
-        # update_network_vars = self.update_network.get_variables_as_tensor()
-        # self.target_network.replace_model_weights(new_vars=update_network_vars, tf_session=self.sess)
+                if self.tnetwork_update_freq > 1:
+                    self.sess.run(self.copy_to_target)
 
     def get_next_states_values_target_network(self, state, reshape=True):
         if reshape:
             dims = [1] + list(self.obs_dims)
             feed_dictionary = {self.target_network.x_frames: state.reshape(dims)}
+            # y_hat = self.sess.run(self.state_value, feed_dict=feed_dictionary)
             y_hat = self.sess.run(self.target_network.y_hat, feed_dict=feed_dictionary)
             return y_hat[0]
         else:
             feed_dictionary = {self.target_network.x_frames: state}
+            # y_hat = self.sess.run(self.state_value, feed_dict=feed_dictionary)
             y_hat = self.sess.run(self.target_network.y_hat, feed_dict=feed_dictionary)
             return y_hat
+
+    def get_state_values_for_evaluation(self, states):
+        feed_dictionary = {self.update_network.x_frames: states}
+        state_values = self.sess.run(self.update_network.y_hat, feed_dict=feed_dictionary)
+        return state_values
 
     def store_summary(self):
         if self.save_summary:

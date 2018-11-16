@@ -41,13 +41,15 @@ def fully_connected_v(name, label, var_in, dim_in, dim_out, initializer, transfe
                 b = tf.get_variable("b", [dim_out])
             else: # new
                 if xavier_init:
-                    W = tf.get_variable("W", [dim_in, dim_out], initializer=initializer)
-                    b = tf.get_variable("b", [dim_out], initializer=initializer)
+                    W = tf.get_variable("W", [dim_in, dim_out], initializer=initializer, dtype=tf.float64)
+                    b = tf.get_variable("b", [dim_out], initializer=initializer, dtype=tf.float64)
                 else:
                     W = tf.get_variable("W", [dim_in, dim_out],
-                                        initializer=tf.random_normal_initializer(mean=0.0, stddev=0.5))
+                                        initializer=tf.random_normal_initializer(mean=0.0, stddev=0.5),
+                                        dtype=tf.float64)
                     b = tf.get_variable("b", [dim_out],
-                                        initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
+                                        initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1),
+                                        dtype=tf.float64)
 
     z_hat = tf.matmul(var_in, W)
     z_hat = tf.nn.bias_add(z_hat, b)
@@ -180,8 +182,8 @@ class StateValueFullyConnectedModel:
         " Dimensions "
         dim_in = [np.prod(self.obs_dims)] + self.dim_out[:-1]
         " Placehodler "
-        self.x_frames = tf.placeholder(tf.float32, shape=(None, dim_in[0]))             # input frames
-        self.y = tf.placeholder(tf.float32, shape=None)                                 # target
+        self.x_frames = tf.placeholder(tf.float64, shape=(None, dim_in[0]))             # input frames
+        self.y = tf.placeholder(tf.float64, shape=None)                                 # target
         " Variables for Training "
         self.train_vars = []
 
@@ -210,17 +212,6 @@ class StateValueFullyConnectedModel:
         self.train_vars = [self.train_vars]
 
         # Temporal Difference Error
-        self.td_error = tf.subtract(self.y, self.y_hat)
+        self.td_error = tf.subtract(self.y, tf.squeeze(self.y_hat, axis=1))
         # Loss
-        self.train_loss = tf.reduce_mean(tf.pow(self.td_error, 2))
-
-    def replace_model_weights(self, new_vars, tf_session=tf.Session()):
-        if not isinstance(new_vars, list):
-            new_vars = [new_vars]
-        assert len(new_vars) == len(self.train_vars[0]), "The lists of variables need to have the same length!"
-
-        for i in range(len(self.train_vars[0])):
-            tf_session.run(tf.assign(self.train_vars[0][i], new_vars[i]))
-
-    def get_variables_as_tensor(self):
-        return self.train_vars[0]
+        self.train_loss = tf.reduce_sum(tf.pow(self.td_error, 2))

@@ -43,22 +43,18 @@ class TDExperienceReplayBuffer:
     def store_observation(self, observation):
         """ The only two keys that are required are 'state' """
         assert isinstance(observation, dict)
-        assert all(akey in observation.keys() for akey in ["reward", "state", "terminate", "bprobabilities"])
-
-        temp_terminate = observation['terminate']
-        temp_timeout = observation['timeout']
-        reward = observation["reward"]
+        assert all(akey in observation.keys() for akey in ["reward", "state", "terminate", "timeout"])
 
         self.state.append(observation["state"])
-        self.reward.append(reward)
-        self.terminate.append(temp_terminate)
-        self.timeout.append(temp_timeout)
+        self.reward.append(observation["reward"])
+        self.terminate.append(observation['terminate'])
+        self.timeout.append(observation['timeout'])
         self.estimated_return.append(0.0)
         self.up_to_date.append(False)
 
-        self.current_index += 1
-        if self.current_index >= self.buff_sz:
-            self.current_index = 0
+        if self.current_index < self.buff_sz:
+            self.current_index += 1
+        elif (self.current_index >= self.buff_sz) and (not self.full_buffer):
             self.full_buffer = True
 
     def sample_indices(self):
@@ -84,39 +80,43 @@ class TDExperienceReplayBuffer:
 
     def get_data(self, update_function):
         indices = self.sample_indices()
-        bf_start = self.state.start
+        bf_start = self.terminate.start
 
         sample_states = self.state.data.take(bf_start + indices, axis=0, mode='wrap')
-
         estimated_returns = np.zeros(self.batch_sz, dtype=np.float64)
 
-        """ Retrieving the estimated returns that are up to date """
-        utd_returns = self.up_to_date.data.take(bf_start + indices, axis=0, mode='wrap')  # utd = up to date
-        utd_batch_indices = np.squeeze(np.argwhere(utd_returns), axis=1)
-        utd_buffer_indices = indices[utd_batch_indices]
-        estimated_returns[utd_batch_indices] = \
-            self.estimated_return.data.take(bf_start + utd_buffer_indices, axis=0, mode='wrap')
+        """ Retrieving the returns that have already being computed """
+        up_to_date_observations = self.up_to_date.data.take(bf_start + indices, axis=0, mode='wrap')
+        up_to_date_batch_indices = np.squeeze(np.argwhere(up_to_date_observations), axis=1)
+        up_to_date_buffer_indices = indices[up_to_date_batch_indices]
+        estimated_returns[up_to_date_batch_indices] = \
+            self.estimated_return.data.take(bf_start + up_to_date_buffer_indices, axis=0, mode='wrap')
 
-        """ Computing the estimated returns that are not up to date """
-        not_utd_batch_indices = np.squeeze(np.argwhere(np.logical_not(utd_returns)), axis=1)
-        not_utd_buffer_indices = indices[not_utd_batch_indices]
-        next_time_step_indices = bf_start + not_utd_buffer_indices + 1
-        adjusted_batch_sz = self.batch_sz - np.array(utd_batch_indices).size
+        """ Computing the returns that are not up to date """
+        not_up_to_date_batch_indices = np.squeeze(np.argwhere(np.logical_not(up_to_date_observations)), axis=1)
+        not_up_to_date_buffer_indices = indices[not_up_to_date_batch_indices]
+        adjusted_batch_size = not_up_to_date_batch_indices.size
 
-        if adjusted_batch_sz > 0:
-            next_state = self.state.data.take(next_time_step_indices, axis=0, mode='wrap')
-            next_state_values = update_function(next_state, reshape=False).reshape([adjusted_batch_sz])
-            next_reward = self.reward.data.take(next_time_step_indices, axis=0, mode='wrap')
-            next_timeout = self.timeout.data.take(next_time_step_indices, axis=0, mode='wrap')
-            next_termination = self.terminate.data.take(next_time_step_indices, axis=0, mode='wrap')
+        if adjusted_batch_size > 0:
+            next_indices = not_up_to_date_buffer_indices + 1
+            next_state = self.state.data.take(bf_start + next_indices, axis=0, mode='wrap')
+            next_state_values = update_function(next_state, reshape=False).reshape(adjusted_batch_size)
+            next_reward = self.reward.data.take(bf_start + next_indices, axis=0, mode='wrap')
+            next_terminations = self.terminate.data.take(bf_start + next_indices, axis=0, mode='wrap')
+            estimated_returns[not_up_to_date_batch_indices] = \
+                self.return_function.batch_return_function(next_reward, next_state_values, next_terminations)
 
-            estimated_returns[not_utd_batch_indices] = \
-                self.return_function.batch_return_function(next_reward, next_state_values, next_termination,
-                                                           next_timeout, adjusted_batch_sz)
+            self.estimated_return.data.put(indices=bf_start + not_up_to_date_buffer_indices,
+                                           values=estimated_returns[not_up_to_date_batch_indices],
+                                           mode='wrap')
+            self.up_to_date.data.put(indices=bf_start + not_up_to_date_buffer_indices, values=True, mode='wrap')
 
-            self.estimated_return.data.put(indices=bf_start + not_utd_buffer_indices,
-                                           values=estimated_returns[not_utd_batch_indices], mode='wrap')
-            self.up_to_date.data.put(indices=bf_start + not_utd_buffer_indices, values=True, mode='wrap')
+        # next_state = self.state.data.take(bf_start + next_indices, axis=0, mode='wrap')
+        # next_state_values = update_function(next_state, reshape=False).reshape(self.batch_sz)
+        # next_reward = self.reward.data.take(bf_start + next_indices, axis=0, mode='wrap')
+        # next_termination = self.terminate.data.take(bf_start + next_indices, axis=0, mode='wrap')
+        # estimated_returns = \
+        #     self.return_function.batch_return_function(next_reward, next_state_values, next_termination)
 
         return sample_states, estimated_returns
 

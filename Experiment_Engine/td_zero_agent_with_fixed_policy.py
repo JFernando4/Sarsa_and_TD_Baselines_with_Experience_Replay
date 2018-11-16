@@ -7,7 +7,7 @@ from Experiment_Engine.config import Config
 
 class TDZeroAgent:
 
-    def __init__(self, environment, function_approximator, behaviour_policy, er_buffer, config=None,
+    def __init__(self, environment, function_approximator, er_buffer, config=None,
                  summary=None):
         """
         Summary Name: return_per_episode
@@ -24,7 +24,6 @@ class TDZeroAgent:
         self.save_summary = check_attribute_else_default(self.config, 'save_summary', False)
         self.er_start_size = check_attribute_else_default(self.config, 'er_start_size', 0)
         check_attribute_else_default(self.config, 'er_init_steps_count', 0)
-        self.fixed_tpolicy = check_attribute_else_default(self.config, 'fixed_tpolicy', False)
 
         if self.save_summary:
             assert isinstance(summary, dict)
@@ -32,8 +31,6 @@ class TDZeroAgent:
             check_dict_else_default(self.summary, 'return_per_episode', [])
 
         " Other Parameters "
-        # Behaviour
-        self.bpolicy = behaviour_policy
         # Experience Replay Buffer
         self.er_buffer = er_buffer
         # Function Approximator: used to approximate the Q-Values
@@ -51,7 +48,7 @@ class TDZeroAgent:
             S = self.env.get_current_state()
             A = self.choose_action(S)
             # Storing in the experience replay buffer
-            observation = {"reward": np.float64(0), "state": S, "terminate": False, "timeout": False}
+            observation = {"reward": np.float64(0), "state": self.scale_state(S), "terminate": False, "timeout": False}
             self.er_buffer.store_observation(observation)
 
             T = inf
@@ -70,7 +67,7 @@ class TDZeroAgent:
                         T = t + 1
                     A = self.choose_action(S)
                 # Storing in the experience replay buffer
-                observation = {"reward": R, "state": S, "terminate": terminate, "timeout": timeout}
+                observation = {"reward": R, "state": self.scale_state(S), "terminate": terminate, "timeout": timeout}
                 self.er_buffer.store_observation(observation)
                 if self.config.er_init_steps_count < self.er_start_size:
                     # Populating the experience replay buffer
@@ -89,12 +86,22 @@ class TDZeroAgent:
             self.cumulative_reward = 0
 
     @staticmethod
+    def scale_state(state):
+        temp_state = np.zeros(2, dtype=np.float64)
+        temp_state[0] = 2 * ((state[0] + 1.2) / 1.7) - 1
+        temp_state[1] = 2 * ((state[1] + 0.07) / 0.14) - 1
+        return temp_state
+
+
+    @staticmethod
     def choose_action(S):
         velocity = S[1]
-        if velocity >= 0:
+        if velocity == 0:
             action = 1
+        elif velocity > 0:
+            action = 2
         else:
-            action = -1
+            action = 0
         return action
 
 
@@ -110,18 +117,7 @@ class TDZeroReturnFunction:
         """
         self.gamma = check_attribute_else_default(config, 'gamma', 1.0)
 
-    def batch_return_function(self, next_reward, next_state_values, next_termination, next_timeout, batch_size):
-
-        batch_idxs = np.arange(batch_size)
-        one_vector = np.ones(batch_idxs.size, dtype=np.uint8)
-        term_ind = next_termination.astype(np.uint8)
-        neg_term_ind = np.subtract(one_vector, term_ind)
-        timeout_ind = next_timeout.astype(np.uint8)
-        neg_timeout_ind = np.subtract(one_vector, timeout_ind)
-
-        Gt_last_term = self.gamma * (neg_term_ind * neg_timeout_ind * next_state_values +
-                                     term_ind * neg_timeout_ind * 0.0 +
-                                     neg_term_ind * timeout_ind * next_state_values)
-
+    def batch_return_function(self, next_reward, next_state_values, next_termination):
+        Gt_last_term = self.gamma * (np.float64(np.logical_not(next_termination)) * next_state_values)
         Gt = next_reward + Gt_last_term
         return Gt

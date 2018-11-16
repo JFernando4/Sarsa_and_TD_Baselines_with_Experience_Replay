@@ -35,6 +35,7 @@ class ExperimentAgent():
         """ Experiment Configuration """
         self.config = Config()
         self.summary = {}
+        self.summary['root_mean_squared_value_error'] = []
         self.config.save_summary = True
 
         """ Environment Parameters """
@@ -51,18 +52,17 @@ class ExperimentAgent():
         self.config.alpha = self.alpha
         self.config.tnetwork_update_freq = self.tnetwork_update_freq
         self.config.update_count = 0
-        # self.optimizer = lambda lr: tf.train.RMSPropOptimizer(learning_rate=lr, decay=0.95, epsilon=0.01, momentum=0.95,
-        #                                                       centered=True)
-        self.optimizer = lambda lr: tf.train.GradientDescentOptimizer(learning_rate=lr)
+        self.optimizer = lambda lr: tf.train.RMSPropOptimizer(learning_rate=lr, decay=0.95, epsilon=0.01, momentum=0.95,
+                                                              centered=True)
 
         """     Experience Replay Buffer Parameters     """
         self.config.batch_sz = 32
         self.config.buff_sz = 20000
         self.config.env_state_dims = [2]        # Dimensions of the raw environment's states
-        self.config.obs_dtype = np.float32      # Data type of the raw environment's states
+        self.config.obs_dtype = np.float64      # Data type of the raw environment's states
 
         """ RL Agent Parameters """
-        self.config.gamma = 1
+        self.config.gamma = 1.0
         self.config.er_start_size = self.replay_start
         self.config.er_init_steps_count = 0
 
@@ -98,17 +98,20 @@ class ExperimentAgent():
         self.function_approximator.store_summary()
         self.env.store_summary()
         self.agent.store_summary()
-        self.evaluate_model(database)
+        rmsve = self.evaluate_model(database)
+        assert 'root_mean_squared_value_error' in self.summary.keys()
+        self.summary['root_mean_squared_value_error'].append(rmsve)
 
     def evaluate_model(self, database):
         states = database[:, np.arange(2)]      # The first two columns correspond to the position and velocity
+        states = 2 * np.divide(np.add(states, np.array([1.2, 0.07])), np.array([1.7, 0.14])) - 1
         estimated_value_functions = np.squeeze(self.function_approximator.get_state_values_for_evaluation(states))
         true_value_functions = database[:, 2]
         estimation_error = estimated_value_functions - true_value_functions
         squared_error = estimation_error * estimation_error
-
         mean_squared_error = np.sum(squared_error) / squared_error.size
-        print("The root mean squared value error is:", np.sqrt(mean_squared_error))
+        rmsve = np.sqrt(mean_squared_error)
+        return rmsve
 
     def get_number_of_steps(self):
         return np.sum(self.summary['steps_per_episode'])
@@ -119,14 +122,17 @@ class ExperimentAgent():
     def get_train_data(self):
         return_per_episode = self.summary['return_per_episode']
         nn_loss = self.summary['cumulative_loss']
-        return return_per_episode, nn_loss
+        rmsve = self.summary['root_mean_squared_value_error']
+        return return_per_episode, nn_loss, rmsve
 
     def save_results(self, dir_name):
         env_info = np.cumsum(self.summary['steps_per_episode'])
-        return_per_episode = self.summary['return_per_episode']
-        total_loss_per_episode = self.summary['cumulative_loss']
+        return_per_episode = np.array(self.summary['return_per_episode'], dtype=np.float64)
+        total_loss_per_episode = np.array(self.summary['cumulative_loss'], dtype=np.float64)
+        root_mean_squared_value_error = np.array(self.summary['root_mean_squared_value_error'], dtype=np.float64)
         results = {'return_per_episode': return_per_episode, 'env_info': env_info,
-                   'total_loss_per_episode': total_loss_per_episode}
+                   'total_loss_per_episode': total_loss_per_episode,
+                   'root_mean_squared_value_error': root_mean_squared_value_error}
         with open(os.path.join(dir_name, 'results.p'), mode="wb") as results_file:
             pickle.dump(results, results_file)
 
@@ -169,7 +175,7 @@ class Experiment:
                 print("\nTraining episode", str(len(self.agent.get_train_data()[0]) + 1) + "...")
             self.agent.train(self.database)
             if verbose:
-                return_per_episode, nn_loss = self.agent.get_train_data()
+                return_per_episode, nn_loss, rmsve = self.agent.get_train_data()
                 if len(return_per_episode) < 50:
                     print("The average return is:", np.average(return_per_episode))
                     print("The average training loss is:", np.average(nn_loss))
@@ -177,8 +183,10 @@ class Experiment:
                     print("The average return is:", np.average(return_per_episode[-50:]))
                     print("The average training loss is:", np.average(nn_loss[-50:]))
                 print("The return in the last episode was:", return_per_episode[-1])
+                print("The root mean squared value error last episode was:", rmsve[-1])
                 print("The total number of steps is:", self.agent.get_number_of_steps())
                 print("The total average return is:", np.average(return_per_episode))
+                print("The total average root mean squared value error is:", np.average(rmsve))
         self.agent.save_results(self.results_dir)
 
 
