@@ -66,8 +66,6 @@ class TDNeuralNetworkFunctionApproximator:
         self.copy_to_target = tf.group(*copy_ops)
         self.sess.run(self.copy_to_target)
 
-        # self.state_value = tf.stop_gradient(self.target_network.y_hat)
-
     def update(self):
         if self.er_buffer.ready_to_sample():
             sample_states, sample_returns = \
@@ -75,9 +73,7 @@ class TDNeuralNetworkFunctionApproximator:
             feed_dictionary = {self.update_network.x_frames: sample_states,
                                self.update_network.y: sample_returns}
 
-            tderror, train_loss, _ = self.sess.run((self.update_network.td_error,
-                                                    self.update_network.train_loss,
-                                                    self.train_step), feed_dict=feed_dictionary)
+            train_loss, _ = self.sess.run((self.update_network.train_loss, self.train_step), feed_dict=feed_dictionary)
             self.training_steps += 1
             self.cumulative_loss += train_loss
             self.config.update_count += 1
@@ -91,12 +87,10 @@ class TDNeuralNetworkFunctionApproximator:
         if reshape:
             dims = [1] + list(self.obs_dims)
             feed_dictionary = {self.target_network.x_frames: state.reshape(dims)}
-            # y_hat = self.sess.run(self.state_value, feed_dict=feed_dictionary)
             y_hat = self.sess.run(self.target_network.y_hat, feed_dict=feed_dictionary)
             return y_hat[0]
         else:
             feed_dictionary = {self.target_network.x_frames: state}
-            # y_hat = self.sess.run(self.state_value, feed_dict=feed_dictionary)
             y_hat = self.sess.run(self.target_network.y_hat, feed_dict=feed_dictionary)
             return y_hat
 
