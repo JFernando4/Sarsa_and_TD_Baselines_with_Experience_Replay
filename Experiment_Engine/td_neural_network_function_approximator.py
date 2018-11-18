@@ -80,8 +80,7 @@ class TDNeuralNetworkFunctionApproximator:
             if self.config.update_count >= self.tnetwork_update_freq:
                 self.config.update_count = 0
                 self.er_buffer.out_of_date()
-                if self.tnetwork_update_freq > 1:
-                    self.sess.run(self.copy_to_target)
+                self.sess.run(self.copy_to_target)
 
     def get_next_states_values_target_network(self, state, reshape=True):
         if reshape:
