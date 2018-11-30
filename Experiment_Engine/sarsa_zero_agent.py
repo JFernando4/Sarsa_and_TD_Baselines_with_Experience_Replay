@@ -52,7 +52,7 @@ class SarsaZeroAgent:
         for episode in range(num_episodes):
             # Current State, Action, and Q_values
             S = self.env.get_current_state()
-            q_values = self.fa.get_next_states_values(S)
+            q_values = self.fa.get_next_states_values(self.scale_state(S))
 
             if self.fixed_tpolicy:
                 A = self.bpolicy.choose_action(S)
