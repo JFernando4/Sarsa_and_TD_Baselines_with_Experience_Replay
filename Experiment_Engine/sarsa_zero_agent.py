@@ -69,7 +69,7 @@ class SarsaZeroAgent:
                     self.config.er_init_steps_count += 1
 
             # Storing in the experience replay buffer
-            observation = {"reward": np.float64(0), "action": A, "state": S,
+            observation = {"reward": np.float64(0), "action": A, "state": self.scale_state(S),
                            "terminate": False, "bprobabilities": np.float64(bprob), "timeout": False}
             self.er_buffer.store_observation(observation)
 
@@ -79,7 +79,7 @@ class SarsaZeroAgent:
             while t != T:
                 # Step in the environment
                 S, R, terminate, timeout = self.env.update(A)
-                q_values = self.fa.get_next_states_values(S)
+                q_values = self.fa.get_next_states_values(self.scale_state(S))
                 # Record Keeping
                 self.cumulative_reward += R
 
@@ -105,7 +105,7 @@ class SarsaZeroAgent:
                             self.config.er_init_steps_count += 1
 
                 # Storing in the experience replay buffer
-                observation = {"reward": R, "action": A, "state": S,
+                observation = {"reward": R, "action": A, "state": self.scale_state(S),
                                "terminate": terminate, "bprobabilities": np.float64(bprob),
                                "timeout": timeout}
                 self.er_buffer.store_observation(observation)
@@ -122,6 +122,13 @@ class SarsaZeroAgent:
         if self.save_summary:
             self.summary["return_per_episode"].append(self.cumulative_reward)
             self.cumulative_reward = 0
+
+    @staticmethod
+    def scale_state(state):
+        temp_state = np.zeros(2, dtype=np.float64)
+        temp_state[0] = 2 * ((state[0] + 1.2) / 1.7) - 1
+        temp_state[1] = 2 * ((state[1] + 0.07) / 0.14) - 1
+        return temp_state
 
 
 class SarsaZeroReturnFunction:
