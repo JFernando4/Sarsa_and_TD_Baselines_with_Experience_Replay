@@ -11,6 +11,6 @@ for (( i=$first_agent_number; i <= $last_agent_number; i++ ))
 do
     echo "Training Agent $i"
     python3 ./td_zero_mountain_car_prediction.py -episodes 2000 \
-    -name Learning_Rate/Learning_Rate_'(1e-6)x(2e12)'/agent_$i \
-    -quiet -tnetwork_update_freq 10 -alpha '1e-6 * (2**12)' -hidden_units 135 -max_steps 1000 -replay_start 50
+    -name Learning_Rate/Learning_Rate_0000002/agent_$i \
+    -quiet -tnetwork_update_freq 10 -alpha 0.000002 -hidden_units 135 -max_steps 1000 -replay_start 50
 done

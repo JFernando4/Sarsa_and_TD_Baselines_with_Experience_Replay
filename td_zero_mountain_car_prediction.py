@@ -225,3 +225,6 @@ if __name__ == "__main__":
     experiment.run_experiment(verbose=args.quiet)
     end_time = time.time()
     print("Total running time:", end_time - start_time)
+
+    # for mountain car prediction: alpha_list_nonlinear = np.array([0.0000005, 0.000001, 0.000002, 0.000004, 0.000008,
+    # 0.000016, 0.000032, 0.000064, 0.000128, 0.000256, 0.000512, 0.001024, 0.002048, 0.004096, 0.008192, 0.016384, 0.032768])
