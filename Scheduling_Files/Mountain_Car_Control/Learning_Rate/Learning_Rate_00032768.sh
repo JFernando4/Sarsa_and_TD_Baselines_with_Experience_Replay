@@ -11,7 +11,7 @@ for (( i=$first_agent_number; i <= $last_agent_number; i++ ))
 do
     echo "Training Agent $i"
     python3 ./sarsa_zero_mountain_car_control.py -episodes 500 \
-    -name Learning_Rate_Results/Learning_Rate_"(5e-6)x(2e4)"/agent_$i \
-    -quiet -tnetwork_update_freq 10 -alpha "5e-6 * (2**4)" -onpolicy -hidden_units 800 -max_steps 1000 \
+    -name Learning_Rate_Results/Learning_Rate_00032768/agent_$i \
+    -quiet -tnetwork_update_freq 10 -alpha 0.0032768 -onpolicy -hidden_units 800 -max_steps 1000 \
     -replay_start 50
 done

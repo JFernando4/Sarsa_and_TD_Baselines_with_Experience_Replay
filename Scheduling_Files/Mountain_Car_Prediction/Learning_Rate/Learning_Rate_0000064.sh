@@ -10,8 +10,7 @@ export PYTHONPATH=.
 for (( i=$first_agent_number; i <= $last_agent_number; i++ ))
 do
     echo "Training Agent $i"
-    python3 ./sarsa_zero_mountain_car_control.py -episodes 500 \
-    -name Learning_Rate_Results/Learning_Rate_"(5e-6)x(2e3)"/agent_$i \
-    -quiet -tnetwork_update_freq 10 -alpha "5e-6 * (2**3)" -onpolicy -hidden_units 800 -max_steps 1000 \
-    -replay_start 50
+    python3 ./td_zero_mountain_car_prediction.py -episodes 2000 \
+    -name Learning_Rate/Learning_Rate_0000064/agent_$i \
+    -quiet -tnetwork_update_freq 10 -alpha 0.000064 -hidden_units 135 -max_steps 1000 -replay_start 50
 done

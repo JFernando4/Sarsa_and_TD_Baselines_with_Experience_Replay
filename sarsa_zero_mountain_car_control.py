@@ -221,3 +221,7 @@ if __name__ == "__main__":
     experiment.run_experiment(verbose=args.quiet)
     end_time = time.time()
     print("Total running time:", end_time - start_time)
+
+    # alpha_list_nonlinear = np.array([0.0000001, 0.0000002, 0.0000004, 0.0000008, 0.0000016, 0.0000032, 0.0000064,
+    # 0.0000128, 0.0000256, 0.0000512, 0.0001024, 0.0002048, 0.0004096, 0.0008192, 0.0016384, 0.0032768, 0.0065536,
+    #  0.0131072])
