@@ -11,7 +11,7 @@ for (( i=$first_agent_number; i <= $last_agent_number; i++ ))
 do
     echo "Training Agent $i"
     python3 ./sarsa_zero_acrobot_control.py -episodes 500 \
-    -name Learning_Rate_Results/Learning_Rate_"(5e-6)x(2e5)"/agent_$i \
-    -quiet -tnetwork_update_freq 100 -alpha "5e-6 * (2**5)" -onpolicy -hidden_units 2000 -max_steps 500 \
+    -name Learning_Rate/Learning_Rate_00000002/agent_$i \
+    -quiet -tnetwork_update_freq 100 -alpha 0.0000002 -onpolicy -hidden_units 2000 -max_steps 500 \
     -replay_start 100
 done

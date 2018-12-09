@@ -8,7 +8,7 @@ from Experiment_Engine.config import Config
 class SarsaZeroAgent:
 
     def __init__(self, environment, function_approximator, behaviour_policy, er_buffer, config=None,
-                 summary=None):
+                 summary=None, reshape=True):
         """
         Summary Name: return_per_episode
         """
@@ -45,6 +45,8 @@ class SarsaZeroAgent:
         self.env = environment
         # Summaries
         self.cumulative_reward = 0
+        # Whether to reshape the mountain car observations
+        self.reshape = reshape
 
     def train(self, num_episodes):
         if num_episodes == 0: return
@@ -123,12 +125,14 @@ class SarsaZeroAgent:
             self.summary["return_per_episode"].append(self.cumulative_reward)
             self.cumulative_reward = 0
 
-    @staticmethod
-    def scale_state(state):
-        temp_state = np.zeros(2, dtype=np.float64)
-        temp_state[0] = 2 * ((state[0] + 1.2) / 1.7) - 1
-        temp_state[1] = 2 * ((state[1] + 0.07) / 0.14) - 1
-        return temp_state
+    def scale_state(self, state):
+        if self.reshape:
+            temp_state = np.zeros(2, dtype=np.float64)
+            temp_state[0] = 2 * ((state[0] + 1.2) / 1.7) - 1
+            temp_state[1] = 2 * ((state[1] + 0.07) / 0.14) - 1
+            return temp_state
+        else:
+            return state
 
 
 class SarsaZeroReturnFunction:
